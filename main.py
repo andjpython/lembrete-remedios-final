@@ -29,6 +29,10 @@ COMANDOS_ARQUIVO = "ultimos_comandos.json"
 scheduler = BackgroundScheduler()
 
 # ========== UTILITÁRIOS ==========
+def log(msg):
+    agora = datetime.now().strftime("[%Y-%m-%d %H:%M:%S]")
+    print(f"{agora} {msg}")
+
 def carregar_json(caminho, tipo_lista=False):
     if not os.path.exists(caminho):
         return [] if tipo_lista else {}
@@ -63,9 +67,9 @@ def registrar_ultimo_comando(remedio, hora):
 def enviar_mensagem(mensagem):
     try:
         client.messages.create(body=mensagem, from_=TWILIO_NUMBER, to=DESTINO)
-        print(f"[📤] Mensagem enviada: {mensagem}")
+        log(f"[📤] Mensagem enviada: {mensagem}")
     except Exception as e:
-        print(f"[❌] Erro ao enviar mensagem: {e}")
+        log(f"[❌] Erro ao enviar mensagem: {e}")
 
 # ========== AGENDA ==========
 def agendar_alertas():
@@ -173,7 +177,7 @@ def agendar_reenvio_pendentes():
                     enviar_mensagem(mensagem)
                     reenviadas += 1
             except Exception as e:
-                print(f"[⚠️] Erro na pendência: {e}")
+                log(f"[⚠️] Erro na pendência: {e}")
 
         if reenviadas:
             salvar_json(HISTORICO_ARQUIVO, historico)
@@ -182,7 +186,8 @@ def agendar_reenvio_pendentes():
 
 # ========== EXECUÇÃO ==========
 if __name__ == "__main__":
-    print("🩺 Agendador iniciado...")
+    log("🚀 main.py está rodando normalmente no Render!")
+    log("🩺 Agendador iniciado...")
     scheduler.start()
 
     agendar_alertas()
@@ -195,4 +200,4 @@ if __name__ == "__main__":
             time.sleep(1)
     except (KeyboardInterrupt, SystemExit):
         scheduler.shutdown()
-        print("🛑 Agendador encerrado.")
+        log("🛑 Agendador encerrado.")

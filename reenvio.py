@@ -113,6 +113,7 @@ def verificar_pendencias():
 
 # ========== EXECUÇÃO ==========
 if __name__ == "__main__":
+    log("🚀 reenvio.py está rodando normalmente no Render!")
     log("🔁 Monitor de reenvios iniciado.")
     while True:
         verificar_pendencias()

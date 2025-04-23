@@ -6,6 +6,14 @@ from twilio.rest import Client
 from dotenv import load_dotenv
 from pathlib import Path
 
+# ========== INÍCIO ==========
+print("🟢 app.py rodando...")  # Verificação rápida no console
+def log(msg):
+    agora = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[{agora}] {msg}")
+
+log("🚀 app.py está rodando normalmente no Render!")  # LOG PRINCIPAL PARA O RENDER
+
 # ========== CARREGAR VARIÁVEIS DE AMBIENTE ==========
 env_path = Path(__file__).parent / ".env"
 load_dotenv(dotenv_path=env_path)
@@ -15,7 +23,6 @@ TWILIO_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
 TWILIO_NUMBER = os.getenv("TWILIO_NUMBER")
 DESTINO = os.getenv("DESTINO")
 
-# ========== DEBUG .ENV ==========
 print("🔍 TWILIO_ACCOUNT_SID:", TWILIO_SID)
 print("🔍 TWILIO_AUTH_TOKEN:", TWILIO_TOKEN)
 print("🔍 TWILIO_NUMBER:", TWILIO_NUMBER)
@@ -27,10 +34,6 @@ if not all([TWILIO_SID, TWILIO_TOKEN, TWILIO_NUMBER, DESTINO]):
 client = Client(TWILIO_SID, TWILIO_TOKEN)
 
 # ========== UTILITÁRIAS ==========
-def log(msg):
-    agora = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    print(f"[{agora}] {msg}")
-
 def enviar_mensagem(mensagem):
     try:
         client.messages.create(from_=TWILIO_NUMBER, to=DESTINO, body=mensagem)
@@ -99,11 +102,7 @@ def registrar_pendencia(remedio, hora):
     log(f"[📝 PENDÊNCIA REGISTRADA] {nova}")
 
 def notificar_remedio(remedio, hora, tipo_aviso):
-    periodo = next(
-        (f" ({h['periodo']})" for h in remedio.get("horarios", [])
-         if h["hora"] == hora and "periodo" in h),
-        ""
-    )
+    periodo = next((f" ({h['periodo']})" for h in remedio.get("horarios", []) if h["hora"] == hora and "periodo" in h), "")
     msg_tipo = {
         "15min": f"⏳ Em 15 minutos, tome {remedio['nome']}{periodo} - {remedio['dosagem']} ({hora}).",
         "5min": f"⚠️ Faltam 5 minutos para tomar {remedio['nome']}{periodo} - {remedio['dosagem']} ({hora}).",
@@ -120,16 +119,13 @@ def verificar_horarios(remedios):
     for remedio in remedios:
         if not esta_no_periodo_tratamento(remedio) or not e_dia_certo(remedio):
             continue
-
         for h in remedio.get("horarios", []):
             hora_remedio = datetime.datetime.strptime(h["hora"], "%H:%M").time()
             hora_base = datetime.datetime.combine(agora.date(), hora_remedio)
-
             for tipo, minutos in [("15min", 15), ("5min", 5), ("agora", 0)]:
                 if hora_atual == (hora_base - datetime.timedelta(minutes=minutos)).strftime("%H:%M"):
                     notificar_remedio(remedio, h["hora"], tipo)
                     notificou = True
-
     if not notificou:
         log("🔍 Nenhum remédio agendado neste minuto.")
 
@@ -148,11 +144,11 @@ def verificar_pendentes_do_dia(remedios, historico, data):
                 pendentes.append(f"{r['nome']}{periodo} às {h['hora']}")
     return pendentes
 
-# ========== INÍCIO ==========
+# ========== EXECUÇÃO ==========
 def iniciar():
-    log("🚀 Seu código iniciou normalmente!")
+    log("🚀 app.py iniciou normalmente!")
     agora = datetime.datetime.now()
-    enviar_mensagem(f"{saudacao_horario()}! Agora são {agora.strftime('%H:%M')}. Vamos continuar o tratamento!")
+    enviar_mensagem(f"{saudacao_horario()}! Agora são {agora.strftime('%H:%M')}. Vamos iniciar o dia!")
 
     remedios = carregar_json("remedios.json")
     historico = carregar_json("historico.json")
@@ -166,20 +162,5 @@ def iniciar():
     else:
         enviar_mensagem("🎉 Parabéns! Você já tomou todos os remédios do dia.")
 
-# ========== LOOP PRINCIPAL ==========
-def main():
-    remedios = carregar_json("remedios.json")
-    historico = carregar_json("historico.json")
-
-    if not isinstance(historico, dict):
-        historico = {"confirmacoes": [], "pendencias": []}
-        salvar_json("historico.json", historico)
-
-    iniciar()
-
-    while True:
-        verificar_horarios(remedios)
-        time.sleep(60)
-
 if __name__ == "__main__":
-    main()
+    iniciar()
