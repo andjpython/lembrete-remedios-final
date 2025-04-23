@@ -91,11 +91,11 @@ def atualizar_contexto(numero, comando, remedio=None, hora=None):
     salvar_json(CONTEXTO_ARQUIVO, contexto)
 
 # ========== ROTA DE MONITORAMENTO ==========
-@app.route("/ping", methods=["GET"])
+@app.route("/ping", methods=["GET", "HEAD"])
 def ping():
     return "✅ Bot ativo!", 200
 
-# ========== ROTA ==========
+# ========== ROTA PRINCIPAL ==========
 @app.route("/webhook", methods=["POST"])
 def responder():
     mensagem = request.values.get("Body", "").strip()
@@ -109,11 +109,7 @@ def responder():
     hoje = datetime.datetime.now().strftime("%Y-%m-%d")
     nomes_remedios = [r["nome"] for r in remedios]
 
-    # Aqui vem toda a lógica de comandos já existente...
-    # (sua parte do código original continua a partir daqui sem alterações)
-    # ...
-
-    # ========== DEFAULT ==========
+    # Aqui entra toda a lógica dos comandos...
     comandos = (
         "💬 Exemplos de comandos:\n"
         "- *tomei o Lipidil*\n"
