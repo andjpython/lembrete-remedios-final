@@ -96,8 +96,11 @@ def ping():
     return "✅ Bot ativo!", 200
 
 # ========== ROTA PRINCIPAL ==========
-@app.route("/webhook", methods=["POST"])
+@app.route("/webhook", methods=["POST", "HEAD"])
 def responder():
+    if request.method == "HEAD":
+        return "", 200
+
     mensagem = request.values.get("Body", "").strip()
     numero = request.values.get("From", "desconhecido")
     resposta = MessagingResponse()
