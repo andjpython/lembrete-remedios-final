@@ -1,0 +1,77 @@
+{
+  "confirmacoes": [
+    {
+      "remedio": "Zyloric",
+      "resposta": "SIM",
+      "data": "2025-04-19",
+      "hora": "06:30",
+      "confirmado": true
+    },
+    {
+      "remedio": "REFORGA IMUNO",
+      "resposta": "JÁ TOMEI",
+      "data": "2025-04-19",
+      "hora": "08:00",
+      "confirmado": true
+    },
+    {
+      "remedio": "Lipidil",
+      "resposta": "JÁ TOMEI",
+      "data": "2025-04-19",
+      "hora": "10:30",
+      "confirmado": true
+    },
+    {
+      "remedio": "OHDE",
+      "resposta": "JÁ TOMEI",
+      "data": "2025-04-19",
+      "hora": "12:00",
+      "confirmado": true
+    },
+    {
+      "remedio": "REFORGA IMUNO",
+      "resposta": "SIM",
+      "data": "2025-04-19",
+      "hora": "15:30",
+      "confirmado": true
+    },
+    {
+      "remedio": "TREZOR",
+      "resposta": "JÁ TOMEI",
+      "data": "2025-04-19",
+      "hora": "22:00",
+      "confirmado": true
+    },
+    {
+      "remedio": "Zyloric",
+      "data": "2025-04-23",
+      "hora": "06:30",
+      "confirmado": true
+    },
+    {
+      "remedio": "REFORGA IMUNO",
+      "data": "2025-04-23",
+      "hora": "08:00",
+      "confirmado": true
+    },
+    {
+      "remedio": "Lipidil",
+      "data": "2025-04-23",
+      "hora": "10:30",
+      "confirmado": true
+    },
+    {
+      "remedio": "OHDE",
+      "data": "2025-04-23",
+      "hora": "12:00",
+      "confirmado": true
+    },
+    {
+      "remedio": "OHDE",
+      "data": "2025-04-23",
+      "hora": "12:00",
+      "confirmado": true
+    }
+  ],
+  "pendencias": []
+}

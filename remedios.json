@@ -1,0 +1,82 @@
+[
+  {
+    "id": "lipidil",
+    "nome": "Lipidil",
+    "principio_ativo": "Fenofibrato",
+    "dosagem": "160mg",
+    "horarios": [
+      {
+        "hora": "10:30"
+      }
+    ],
+    "frequencia": "diario",
+    "data_inicio": "2025-03-21",
+    "duracao_meses": 4,
+    "obs": ""
+  },
+  {
+    "id": "zyloric",
+    "nome": "Zyloric",
+    "principio_ativo": "Alopurinol",
+    "dosagem": "300mg",
+    "horarios": [
+      {
+        "hora": "06:30"
+      }
+    ],
+    "frequencia": "diario",
+    "data_inicio": "2025-03-21",
+    "duracao_meses": 3,
+    "obs": ""
+  },
+  {
+    "id": "ohde",
+    "nome": "OHDE",
+    "principio_ativo": "Colecalciferol",
+    "dosagem": "1 comprimido",
+    "horarios": [
+      {
+        "hora": "12:00"
+      }
+    ],
+    "frequencia": "semanal",
+    "data_inicio": "2025-03-22",
+    "duracao_meses": 4,
+    "obs": ""
+  },
+  {
+    "id": "trezor",
+    "nome": "TREZOR",
+    "principio_ativo": "Rosuvastatina Cálcica",
+    "dosagem": "20mg",
+    "horarios": [
+      {
+        "hora": "22:00"
+      }
+    ],
+    "frequencia": "diario",
+    "data_inicio": "2025-03-20",
+    "duracao_meses": 0.5,
+    "obs": "Parar quando acabar a cartela."
+  },
+  {
+    "id": "reforga-imuno",
+    "nome": "REFORGA IMUNO",
+    "principio_ativo": "Polivitamínico",
+    "dosagem": "1 comprimido",
+    "horarios": [
+      {
+        "hora": "08:00",
+        "periodo": "Manhã"
+      },
+      {
+        "hora": "15:30",
+        "periodo": "Tarde"
+      }
+    ],
+    "frequencia": "diario",
+    "data_inicio": "2025-03-21",
+    "duracao_meses": 6,
+    "obs": "Fortificante. Tomar apenas durante o dia."
+  }
+]
