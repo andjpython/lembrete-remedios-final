@@ -1,7 +1,6 @@
-# webhook.py
-
 from flask import Flask, request
 from twilio.twiml.messaging_response import MessagingResponse
+from twilio.rest import Client
 import json
 import datetime
 import os
@@ -10,12 +9,20 @@ import difflib
 from dotenv import load_dotenv
 from pathlib import Path
 import random
+import threading
+import time
 
 app = Flask(__name__)
 
 # ========== ENV ==========
 env_path = Path(__file__).parent / ".env"
 load_dotenv(dotenv_path=env_path)
+
+TWILIO_SID = os.getenv("TWILIO_ACCOUNT_SID")
+TWILIO_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
+TWILIO_NUMBER = os.getenv("TWILIO_NUMBER")
+DESTINO = os.getenv("DESTINO")
+client = Client(TWILIO_SID, TWILIO_TOKEN)
 
 # ========== LOG INICIAL ==========
 print("🚀 webhook.py está rodando normalmente no Render!")
@@ -24,6 +31,7 @@ print("🚀 webhook.py está rodando normalmente no Render!")
 HISTORICO_ARQUIVO = "historico.json"
 REMEDIOS_ARQUIVO = "remedios.json"
 CONTEXTO_ARQUIVO = "contexto.json"
+PING_LOG = "ping_log.txt"
 
 # ========== JSON ==========
 def carregar_json(caminho):
@@ -93,6 +101,8 @@ def atualizar_contexto(numero, comando, remedio=None, hora=None):
 # ========== ROTA DE MONITORAMENTO ==========
 @app.route("/ping", methods=["GET", "HEAD"])
 def ping():
+    with open(PING_LOG, "w") as f:
+        f.write(datetime.datetime.now().isoformat())
     return "✅ Bot ativo!", 200
 
 # ========== ROTA PRINCIPAL ==========
@@ -112,7 +122,6 @@ def responder():
     hoje = datetime.datetime.now().strftime("%Y-%m-%d")
     nomes_remedios = [r["nome"] for r in remedios]
 
-    # Aqui entra toda a lógica dos comandos...
     comandos = (
         "💬 Exemplos de comandos:\n"
         "- *tomei o Lipidil*\n"
@@ -124,7 +133,29 @@ def responder():
     resposta.message(f"{gerar_saudacao()}\n{erro_engracado()}\n{comandos}")
     return str(resposta)
 
+# ========== VERIFICAÇÃO DE INATIVIDADE ==========
+def monitorar_pings():
+    while True:
+        try:
+            if os.path.exists(PING_LOG):
+                with open(PING_LOG, "r") as f:
+                    ultima = datetime.datetime.fromisoformat(f.read().strip())
+                agora = datetime.datetime.now()
+                delta = (agora - ultima).total_seconds()
+                if delta > 900:  # mais de 15 minutos
+                    client.messages.create(
+                        from_=TWILIO_NUMBER,
+                        to=DESTINO,
+                        body="🚨 Atenção! O Render não está pingando o webhook há mais de 15 minutos!"
+                    )
+            else:
+                print("⚠️ Arquivo de ping não encontrado.")
+        except Exception as e:
+            print(f"Erro no monitoramento de pings: {e}")
+        time.sleep(60)  # Verifica a cada 1 minuto
+
 # ========== EXECUÇÃO ==========
 if __name__ == "__main__":
+    threading.Thread(target=monitorar_pings, daemon=True).start()
     print("🟢 Webhook do WhatsApp iniciado.")
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
