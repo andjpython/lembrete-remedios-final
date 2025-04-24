@@ -63,13 +63,15 @@ def encontrar_nome_proximo(nome_digitado, nomes_validos):
                 return n
     return None
 
-def gerar_saudacao():
-    hora = agora_br().hour
+def gerar_saudacao_com_hora():
+    agora = agora_br()
+    hora = agora.hour
+    horario = agora.strftime("%H:%M")
     if hora < 12:
-        return "☀️ Bom dia!"
+        return f"☀️ Bom dia! Agora são {horario}. Vamos iniciar o dia!"
     elif hora < 18:
-        return "🌤️ Boa tarde!"
-    return "🌙 Boa noite!"
+        return f"🌤️ Boa tarde! Agora são {horario}. Vamos seguir firmes!"
+    return f"🌙 Boa noite! Agora são {horario}. Vamos iniciar o dia!"
 
 def mensagem_confirmacao(remedio, hora):
     opcoes = [
@@ -134,7 +136,7 @@ def responder():
         "- *errei, não tomei o [remédio]*\n"
         "- *corrige, tomei o [remédio] às [hora]*"
     )
-    resposta.message(f"{gerar_saudacao()}\n{erro_engracado()}\n{comandos}")
+    resposta.message(f"{gerar_saudacao_com_hora()}\n\n{erro_engracado()}\n{comandos}")
     return str(resposta)
 
 # ========== VERIFICAÇÃO DE INATIVIDADE ==========
