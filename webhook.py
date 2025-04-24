@@ -63,7 +63,6 @@ def erro_engracado():
 
 def listar_remedios_do_dia(remedios):
     hoje = agora_br().date()
-    dia_semana = hoje.weekday()
     lista = []
     for r in remedios:
         inicio = datetime.datetime.strptime(r["data_inicio"], "%Y-%m-%d").date()
@@ -192,3 +191,8 @@ def responder():
     )
     resposta.message(f"{gerar_saudacao_com_hora()}\n\n{erro_engracado()}\n\n{comandos}")
     return str(resposta)
+
+# === EXECUÇÃO FLASK PARA PRODUÇÃO ===
+if __name__ == "__main__":
+    print("🟢 Webhook do WhatsApp iniciado e ouvindo na porta padrão do Render...")
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
