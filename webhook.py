@@ -1,3 +1,82 @@
+from flask import Flask, request
+from twilio.twiml.messaging_response import MessagingResponse
+import json
+import datetime
+import os
+import re
+import difflib
+import pytz
+import random
+
+app = Flask(__name__)
+
+# === CONFIG ===
+HISTORICO_ARQUIVO = "historico.json"
+REMEDIOS_ARQUIVO = "remedios.json"
+CONTEXTO_ARQUIVO = "contexto.json"
+
+# === UTILS ===
+def agora_br():
+    return datetime.datetime.now(pytz.timezone("America/Sao_Paulo"))
+
+def normalizar(texto):
+    return texto.strip().lower()
+
+def carregar_json(caminho):
+    if os.path.exists(caminho):
+        with open(caminho, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {}
+
+def salvar_json(caminho, conteudo):
+    with open(caminho, "w", encoding="utf-8") as f:
+        json.dump(conteudo, f, indent=2, ensure_ascii=False)
+
+def atualizar_contexto(numero, comando, remedio=None, hora=None):
+    contexto = carregar_json(CONTEXTO_ARQUIVO)
+    if numero not in contexto:
+        contexto[numero] = {}
+    contexto[numero]["ultimo_comando"] = comando
+    if remedio:
+        contexto[numero]["remedio"] = remedio
+    if hora:
+        contexto[numero]["hora"] = hora
+    salvar_json(CONTEXTO_ARQUIVO, contexto)
+
+def gerar_saudacao_com_hora():
+    hora = agora_br().hour
+    horario = agora_br().strftime("%H:%M")
+    if hora < 12:
+        return f"☀️ Bom dia! Agora são {horario}."
+    elif hora < 18:
+        return f"🌤️ Boa tarde! Agora são {horario}."
+    return f"🌙 Boa noite! Agora são {horario}."
+
+def erro_engracado():
+    return random.choice([
+        "🥶 Ih rapaz, essa eu não entendi!",
+        "🤖 Ainda não aprendi isso... mas tô tentando!",
+        "😅 Tenta de novo aí com outras palavras!",
+        "🧠 Buguei com esse comando. Refaz aí rapidinho?",
+        "👀 Hein? Repete aí mais devagar que eu não peguei..."
+    ])
+
+def listar_remedios_do_dia(remedios):
+    hoje = agora_br().date()
+    dia_semana = hoje.weekday()
+    lista = []
+    for r in remedios:
+        inicio = datetime.datetime.strptime(r["data_inicio"], "%Y-%m-%d").date()
+        dias = (hoje - inicio).days
+        if not (inicio <= hoje):
+            continue
+        if r["frequencia"] == "diario" or (r["frequencia"] == "semanal" and dias % 7 == 0):
+            for h in r["horarios"]:
+                periodo = f" ({h.get('periodo')})" if h.get("periodo") else ""
+                lista.append(f"🔔 {r['nome']}{periodo} às {h['hora']}")
+    return "\n".join(sorted(lista)) or "Nenhum remédio hoje! 😊"
+
+# === ROTAS ===
 @app.route("/webhook", methods=["POST", "HEAD"])
 def responder():
     if request.method == "HEAD":
@@ -13,15 +92,12 @@ def responder():
     hoje = agora_br().strftime("%Y-%m-%d")
     hora_atual = agora_br().strftime("%H:%M")
 
-    # Lista de nomes válidos
     nomes_validos = [r["nome"].lower() for r in remedios]
-
-    # Tentativa de aproximação de nomes
     def corrigir_nome(nome_digitado):
         match = difflib.get_close_matches(nome_digitado.lower(), nomes_validos, n=1, cutoff=0.6)
         return match[0].title() if match else nome_digitado.title()
 
-    # === LISTAR REMÉDIOS DO DIA ===
+    # === LISTAR DO DIA ===
     comandos_dia = [
         "remédio tenho que tomar", "quais remedios", "remédios de hoje",
         "quais faltam", "falta algum", "o que falta", "qual não tomei"
@@ -30,7 +106,7 @@ def responder():
         resposta.message(f"📋 Hoje você ainda precisa tomar:\n{listar_remedios_do_dia(remedios)}")
         return str(resposta)
 
-    # === LISTAR JÁ TOMADOS ===
+    # === JÁ TOMADOS ===
     if "o que já tomei" in texto or "já tomei" in texto:
         confirmados = [c for c in historico.get("confirmacoes", []) if c["data"] == hoje and c.get("confirmado")]
         if confirmados:
@@ -40,7 +116,7 @@ def responder():
             resposta.message("📭 Nenhum remédio confirmado hoje ainda.")
         return str(resposta)
 
-    # === CONFIRMAÇÃO: "tomei o Lipidil"
+    # === CONFIRMAÇÃO ===
     match = re.search(r"tomei o ([\w\s\-]+)", texto)
     if match:
         nome_digitado = match.group(1).strip()
@@ -56,7 +132,7 @@ def responder():
         resposta.message(f"💊 Marquei que você tomou *{remedio_nome}* às {hora_atual}.")
         return str(resposta)
 
-    # === NEGAÇÃO: "não tomei o Lipidil"
+    # === NÃO TOMOU ===
     match = re.search(r"não tomei o ([\w\s\-]+)", texto)
     if match:
         nome_digitado = match.group(1).strip()
@@ -73,8 +149,8 @@ def responder():
         resposta.message(f"🕐 Marquei que *{remedio_nome}* ainda está pendente.")
         return str(resposta)
 
-    # === CORREÇÃO: "corrige, tomei o [remédio] às [hora]"
-    match = re.search(r"corrige.*tomei o ([\w\s\-]+) às (\d{2}:\d{2})", texto)
+    # === CORREÇÃO ===
+    match = re.search(r"corrige.*tomei o ([\w\s\-]+) (?:às|as) (\d{2}:\d{2})", texto)
     if match:
         nome_digitado = match.group(1).strip()
         hora_corrigida = match.group(2)
@@ -90,7 +166,7 @@ def responder():
         resposta.message(f"🔁 Corrigido! Você tomou *{remedio_nome}* às {hora_corrigida}.")
         return str(resposta)
 
-    # === ERRO: "errei, não tomei o Lipidil"
+    # === ERREI ===
     match = re.search(r"errei.*não tomei o ([\w\s\-]+)", texto)
     if match:
         nome_digitado = match.group(1).strip()
@@ -104,15 +180,15 @@ def responder():
         resposta.message(f"⚠️ Ok! Apaguei a confirmação do *{remedio_nome}*.")
         return str(resposta)
 
-    # === DEFAULT
+    # === COMANDO DESCONHECIDO ===
     comandos = (
         "🔍 Exemplos de comandos:\n"
-        "- *tomei o Lipidil*\n"
-        "- *não tomei o Zyloric*\n"
-        "- *quais faltam?*\n"
-        "- *o que já tomei?*\n"
-        "- *errei, não tomei o [remédio]*\n"
-        "- *corrige, tomei o [remédio] às [hora]*"
+        "• tomei o Lipidil\n"
+        "• não tomei o Zyloric\n"
+        "• o que já tomei?\n"
+        "• quais faltam?\n"
+        "• errei, não tomei o Lipidil\n"
+        "• corrige, tomei o OHDE às 12:00"
     )
     resposta.message(f"{gerar_saudacao_com_hora()}\n\n{erro_engracado()}\n\n{comandos}")
     return str(resposta)
