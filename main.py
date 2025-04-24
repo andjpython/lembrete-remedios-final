@@ -1,17 +1,17 @@
-# main.py
-
-from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.triggers.cron import CronTrigger
-from datetime import datetime, timedelta
-import json
 import os
 import time
+import json
+from datetime import datetime, timedelta
+from pathlib import Path
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
 from twilio.rest import Client
 from dotenv import load_dotenv
-from pathlib import Path
-import sys
 
 # ========== CONFIGURAÇÃO ==========
+os.environ["TZ"] = "America/Sao_Paulo"
+time.tzset()
+
 env_path = Path(__file__).parent / ".env"
 load_dotenv(dotenv_path=env_path)
 
@@ -55,7 +55,7 @@ def emoji_por_horario():
     if hora < 12:
         return "☀️"
     elif hora < 18:
-        return "🌤️"
+        return "⛅️"
     return "🌙"
 
 def registrar_ultimo_comando(remedio, hora):
@@ -63,7 +63,6 @@ def registrar_ultimo_comando(remedio, hora):
     comandos[DESTINO] = {"remedio": remedio, "hora": hora}
     salvar_json(COMANDOS_ARQUIVO, comandos)
 
-# ========== MENSAGENS ==========
 def enviar_mensagem(mensagem):
     try:
         client.messages.create(body=mensagem, from_=TWILIO_NUMBER, to=DESTINO)
@@ -71,7 +70,7 @@ def enviar_mensagem(mensagem):
     except Exception as e:
         log(f"[❌] Erro ao enviar mensagem: {e}")
 
-# ========== AGENDA ==========
+# ========== AGENDAMENTOS ==========
 def agendar_alertas():
     remedios = carregar_json(REMEDIOS_ARQUIVO, tipo_lista=True)
     agora = datetime.now()
@@ -80,10 +79,8 @@ def agendar_alertas():
     for r in remedios:
         inicio = datetime.strptime(r["data_inicio"], "%Y-%m-%d").date()
         fim = inicio + timedelta(days=r["duracao_meses"] * 30)
-
         if not (inicio <= hoje <= fim):
             continue
-
         if r["frequencia"] == "semanal" and (hoje - inicio).days % 7 != 0:
             continue
 
@@ -113,8 +110,8 @@ def agendar_relatorio_diario():
         historico = carregar_json(HISTORICO_ARQUIVO)
         hoje = datetime.now().strftime("%Y-%m-%d")
         nome = carregar_nome_paciente()
-
         confirmados = [c for c in historico.get("confirmacoes", []) if c["data"] == hoje]
+
         if confirmados:
             linhas = "\n".join(f"- {c['remedio']} às {c['hora']}" for c in confirmados)
             mensagem = f"📊 Relatório (22:05) - {nome}:\nVocê tomou:\n{linhas}"
@@ -136,11 +133,12 @@ def agendar_resumo_semanal():
             c for c in historico.get("confirmacoes", [])
             if c["confirmado"] and inicio.strftime("%Y-%m-%d") <= c["data"] <= hoje.strftime("%Y-%m-%d")
         ]
+
         if confirmados:
             dias = {}
             for c in confirmados:
                 dias.setdefault(c["data"], []).append(f"- {c['remedio']} às {c['hora']}")
-            mensagem = f"📅 Resumo semanal - {nome}:\n"
+            mensagem = f"📅 Resumo semanal - {nome}:"
             for dia, itens in sorted(dias.items()):
                 mensagem += f"\n🗓️ {dia}:\n" + "\n".join(itens)
         else:
@@ -156,7 +154,6 @@ def agendar_reenvio_pendentes():
         hoje = datetime.now().strftime("%Y-%m-%d")
         agora = datetime.now()
         nome = carregar_nome_paciente()
-
         pendentes = historico.get("pendencias", [])
         reenviadas = 0
 
@@ -166,7 +163,6 @@ def agendar_reenvio_pendentes():
             try:
                 hora_remedio = datetime.strptime(p["horario"], "%H:%M")
                 tempo = (agora - datetime.combine(datetime.today(), hora_remedio.time())).total_seconds()
-
                 if tempo > 300:
                     p["tentativas"] = p.get("tentativas", 0) + 1
                     registrar_ultimo_comando(p["remedio"], p["horario"])
@@ -187,9 +183,8 @@ def agendar_reenvio_pendentes():
 # ========== EXECUÇÃO ==========
 if __name__ == "__main__":
     log("🚀 main.py está rodando normalmente no Render!")
-    log("🩺 Agendador iniciado...")
+    log("🦥 Agendador iniciado...")
     scheduler.start()
-
     agendar_alertas()
     agendar_relatorio_diario()
     agendar_resumo_semanal()
@@ -200,4 +195,4 @@ if __name__ == "__main__":
             time.sleep(1)
     except (KeyboardInterrupt, SystemExit):
         scheduler.shutdown()
-        log("🛑 Agendador encerrado.")
+        log("🚩 Agendador encerrado.")

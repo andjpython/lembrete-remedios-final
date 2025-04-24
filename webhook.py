@@ -1,8 +1,14 @@
+import os
+import time
+
+# Força o timezone correto mesmo no Render
+os.environ["TZ"] = "America/Sao_Paulo"
+time.tzset()
+
 from flask import Flask, request
 from twilio.twiml.messaging_response import MessagingResponse
 import json
 import datetime
-import os
 import re
 import difflib
 import pytz
@@ -96,16 +102,13 @@ def responder():
         match = difflib.get_close_matches(nome_digitado.lower(), nomes_validos, n=1, cutoff=0.6)
         return match[0].title() if match else nome_digitado.title()
 
-    # === LISTAR DO DIA ===
-    comandos_dia = [
+    if any(c in texto for c in [
         "remédio tenho que tomar", "quais remedios", "remédios de hoje",
         "quais faltam", "falta algum", "o que falta", "qual não tomei"
-    ]
-    if any(comando in texto for comando in comandos_dia):
+    ]):
         resposta.message(f"📋 Hoje você ainda precisa tomar:\n{listar_remedios_do_dia(remedios)}")
         return str(resposta)
 
-    # === JÁ TOMADOS ===
     if "o que já tomei" in texto or "já tomei" in texto:
         confirmados = [c for c in historico.get("confirmacoes", []) if c["data"] == hoje and c.get("confirmado")]
         if confirmados:
@@ -115,71 +118,53 @@ def responder():
             resposta.message("📭 Nenhum remédio confirmado hoje ainda.")
         return str(resposta)
 
-    # === CONFIRMAÇÃO ===
     match = re.search(r"tomei o ([\w\s\-]+)", texto)
     if match:
-        nome_digitado = match.group(1).strip()
-        remedio_nome = corrigir_nome(nome_digitado)
+        nome = corrigir_nome(match.group(1).strip())
         historico.setdefault("confirmacoes", []).append({
-            "data": hoje,
-            "hora": hora_atual,
-            "remedio": remedio_nome,
-            "confirmado": True
+            "data": hoje, "hora": hora_atual, "remedio": nome, "confirmado": True
         })
         salvar_json(HISTORICO_ARQUIVO, historico)
-        atualizar_contexto(numero, "tomei", remedio=remedio_nome, hora=hora_atual)
-        resposta.message(f"💊 Marquei que você tomou *{remedio_nome}* às {hora_atual}.")
+        atualizar_contexto(numero, "tomei", remedio=nome, hora=hora_atual)
+        resposta.message(f"💊 Marquei que você tomou *{nome}* às {hora_atual}.")
         return str(resposta)
 
-    # === NÃO TOMOU ===
     match = re.search(r"não tomei o ([\w\s\-]+)", texto)
     if match:
-        nome_digitado = match.group(1).strip()
-        remedio_nome = corrigir_nome(nome_digitado)
+        nome = corrigir_nome(match.group(1).strip())
         historico.setdefault("pendencias", []).append({
-            "data": hoje,
-            "horario": hora_atual,
-            "remedio": remedio_nome,
-            "status": "pendente",
-            "tentativas": 0
+            "data": hoje, "horario": hora_atual, "remedio": nome,
+            "status": "pendente", "tentativas": 0
         })
         salvar_json(HISTORICO_ARQUIVO, historico)
-        atualizar_contexto(numero, "nao_tomei", remedio=remedio_nome)
-        resposta.message(f"🕐 Marquei que *{remedio_nome}* ainda está pendente.")
+        atualizar_contexto(numero, "nao_tomei", remedio=nome)
+        resposta.message(f"🕐 Marquei que *{nome}* ainda está pendente.")
         return str(resposta)
 
-    # === CORREÇÃO ===
     match = re.search(r"corrige.*tomei o ([\w\s\-]+) (?:às|as) (\d{2}:\d{2})", texto)
     if match:
-        nome_digitado = match.group(1).strip()
+        nome = corrigir_nome(match.group(1).strip())
         hora_corrigida = match.group(2)
-        remedio_nome = corrigir_nome(nome_digitado)
         historico.setdefault("confirmacoes", []).append({
-            "data": hoje,
-            "hora": hora_corrigida,
-            "remedio": remedio_nome,
-            "confirmado": True
+            "data": hoje, "hora": hora_corrigida, "remedio": nome, "confirmado": True
         })
         salvar_json(HISTORICO_ARQUIVO, historico)
-        atualizar_contexto(numero, "corrige", remedio=remedio_nome, hora=hora_corrigida)
-        resposta.message(f"🔁 Corrigido! Você tomou *{remedio_nome}* às {hora_corrigida}.")
+        atualizar_contexto(numero, "corrige", remedio=nome, hora=hora_corrigida)
+        resposta.message(f"🔁 Corrigido! Você tomou *{nome}* às {hora_corrigida}.")
         return str(resposta)
 
-    # === ERREI ===
     match = re.search(r"errei.*não tomei o ([\w\s\-]+)", texto)
     if match:
-        nome_digitado = match.group(1).strip()
-        remedio_nome = corrigir_nome(nome_digitado)
+        nome = corrigir_nome(match.group(1).strip())
         historico["confirmacoes"] = [
             c for c in historico.get("confirmacoes", [])
-            if not (c["data"] == hoje and c["remedio"].lower() == remedio_nome.lower())
+            if not (c["data"] == hoje and c["remedio"].lower() == nome.lower())
         ]
         salvar_json(HISTORICO_ARQUIVO, historico)
-        atualizar_contexto(numero, "errei", remedio=remedio_nome)
-        resposta.message(f"⚠️ Ok! Apaguei a confirmação do *{remedio_nome}*.")
+        atualizar_contexto(numero, "errei", remedio=nome)
+        resposta.message(f"⚠️ Ok! Apaguei a confirmação do *{nome}*.")
         return str(resposta)
 
-    # === COMANDO DESCONHECIDO ===
     comandos = (
         "🔍 Exemplos de comandos:\n"
         "• tomei o Lipidil\n"
@@ -192,7 +177,7 @@ def responder():
     resposta.message(f"{gerar_saudacao_com_hora()}\n\n{erro_engracado()}\n\n{comandos}")
     return str(resposta)
 
-# === EXECUÇÃO FLASK PARA PRODUÇÃO ===
+# === FLASK SERVIDOR ===
 if __name__ == "__main__":
     print("🟢 Webhook do WhatsApp iniciado e ouvindo na porta padrão do Render...")
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))

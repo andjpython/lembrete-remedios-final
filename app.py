@@ -7,12 +7,13 @@ from dotenv import load_dotenv
 from pathlib import Path
 
 # ========== INÍCIO ==========
-print("🟢 app.py rodando...")  # Verificação rápida no console
+print("🟢 app.py rodando...")
+
 def log(msg):
     agora = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{agora}] {msg}")
 
-log("🚀 app.py está rodando normalmente no Render!")  # LOG PRINCIPAL PARA O RENDER
+log("🚀 app.py está rodando normalmente no Render!")
 
 # ========== CARREGAR VARIÁVEIS DE AMBIENTE ==========
 env_path = Path(__file__).parent / ".env"
@@ -126,6 +127,7 @@ def verificar_horarios(remedios):
                 if hora_atual == (hora_base - datetime.timedelta(minutes=minutos)).strftime("%H:%M"):
                     notificar_remedio(remedio, h["hora"], tipo)
                     notificou = True
+
     if not notificou:
         log("🔍 Nenhum remédio agendado neste minuto.")
 
