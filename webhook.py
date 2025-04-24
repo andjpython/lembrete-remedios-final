@@ -15,7 +15,7 @@ import pytz
 
 app = Flask(__name__)
 
-# ========== ENV ==========
+# ========== ENV ========== #
 env_path = Path(__file__).parent / ".env"
 load_dotenv(dotenv_path=env_path)
 
@@ -25,16 +25,16 @@ TWILIO_NUMBER = os.getenv("TWILIO_NUMBER")
 DESTINO = os.getenv("DESTINO")
 client = Client(TWILIO_SID, TWILIO_TOKEN)
 
-# ========== LOG INICIAL ==========
+# ========== LOG INICIAL ========== #
 print("🚀 webhook.py está rodando normalmente no Render!")
 
-# ========== ARQUIVOS ==========
+# ========== ARQUIVOS ========== #
 HISTORICO_ARQUIVO = "historico.json"
 REMEDIOS_ARQUIVO = "remedios.json"
 CONTEXTO_ARQUIVO = "contexto.json"
 PING_LOG = "ping_log.txt"
 
-# ========== JSON ==========
+# ========== JSON ========== #
 def carregar_json(caminho):
     if os.path.exists(caminho):
         with open(caminho, "r", encoding="utf-8") as f:
@@ -45,7 +45,7 @@ def salvar_json(caminho, conteudo):
     with open(caminho, "w", encoding="utf-8") as f:
         json.dump(conteudo, f, indent=2, ensure_ascii=False)
 
-# ========== UTILS ==========
+# ========== UTILS ========== #
 def agora_br():
     return datetime.datetime.now(pytz.timezone("America/Sao_Paulo"))
 
@@ -104,14 +104,14 @@ def atualizar_contexto(numero, comando, remedio=None, hora=None):
         contexto[numero]["hora"] = hora
     salvar_json(CONTEXTO_ARQUIVO, contexto)
 
-# ========== ROTA DE MONITORAMENTO ==========
+# ========== ROTA DE MONITORAMENTO ========== #
 @app.route("/ping", methods=["GET", "HEAD"])
 def ping():
     with open(PING_LOG, "w") as f:
         f.write(agora_br().isoformat())
     return "✅ Bot ativo!", 200
 
-# ========== ROTA PRINCIPAL ==========
+# ========== ROTA PRINCIPAL ========== #
 @app.route("/webhook", methods=["POST", "HEAD"])
 def responder():
     if request.method == "HEAD":
@@ -139,7 +139,7 @@ def responder():
     resposta.message(f"{gerar_saudacao_com_hora()}\n\n{erro_engracado()}\n{comandos}")
     return str(resposta)
 
-# ========== VERIFICAÇÃO DE INATIVIDADE ==========
+# ========== VERIFICAÇÃO DE INATIVIDADE ========== #
 def monitorar_pings():
     while True:
         try:
@@ -160,7 +160,7 @@ def monitorar_pings():
             print(f"Erro no monitoramento de pings: {e}")
         time.sleep(60)
 
-# ========== EXECUÇÃO ==========
+# ========== EXECUÇÃO ========== #
 if __name__ == "__main__":
     threading.Thread(target=monitorar_pings, daemon=True).start()
     print("🟢 Webhook do WhatsApp iniciado.")
