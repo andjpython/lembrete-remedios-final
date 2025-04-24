@@ -11,6 +11,7 @@ from pathlib import Path
 import random
 import threading
 import time
+import pytz
 
 app = Flask(__name__)
 
@@ -45,6 +46,9 @@ def salvar_json(caminho, conteudo):
         json.dump(conteudo, f, indent=2, ensure_ascii=False)
 
 # ========== UTILS ==========
+def agora_br():
+    return datetime.datetime.now(pytz.timezone("America/Sao_Paulo"))
+
 def normalizar(texto):
     return texto.strip().lower()
 
@@ -60,7 +64,7 @@ def encontrar_nome_proximo(nome_digitado, nomes_validos):
     return None
 
 def gerar_saudacao():
-    hora = datetime.datetime.now().hour
+    hora = agora_br().hour
     if hora < 12:
         return "☀️ Bom dia!"
     elif hora < 18:
@@ -70,7 +74,7 @@ def gerar_saudacao():
 def mensagem_confirmacao(remedio, hora):
     opcoes = [
         f"✅ Show! Marquei que você tomou *{remedio}* às *{hora}*. 👌",
-        f"📝 Anotado! *{remedio}* às *{hora}* registrado com sucesso!",
+        f"🗘️ Anotado! *{remedio}* às *{hora}* registrado com sucesso!",
         f"💊 Beleza! Já deixei aqui: *{remedio}* às *{hora}*!",
         f"📌 Confirmação feita! *{remedio}*, horário *{hora}*. Tá na mão.",
         f"🎯 Pronto! *{remedio}* das *{hora}* já tá confirmado.",
@@ -79,7 +83,7 @@ def mensagem_confirmacao(remedio, hora):
 
 def erro_engracado():
     frases = [
-        "😵‍💫 Ih rapaz, essa eu não entendi!",
+        "🥵 Ih rapaz, essa eu não entendi!",
         "🤖 Ainda não aprendi isso... mas tô tentando!",
         "😅 Tenta de novo aí com outras palavras!",
         "🧠 Buguei com esse comando. Refaz aí rapidinho?",
@@ -102,7 +106,7 @@ def atualizar_contexto(numero, comando, remedio=None, hora=None):
 @app.route("/ping", methods=["GET", "HEAD"])
 def ping():
     with open(PING_LOG, "w") as f:
-        f.write(datetime.datetime.now().isoformat())
+        f.write(agora_br().isoformat())
     return "✅ Bot ativo!", 200
 
 # ========== ROTA PRINCIPAL ==========
@@ -119,7 +123,7 @@ def responder():
     historico = carregar_json(HISTORICO_ARQUIVO)
     remedios = carregar_json(REMEDIOS_ARQUIVO)
     contexto = carregar_json(CONTEXTO_ARQUIVO)
-    hoje = datetime.datetime.now().strftime("%Y-%m-%d")
+    hoje = agora_br().strftime("%Y-%m-%d")
     nomes_remedios = [r["nome"] for r in remedios]
 
     comandos = (
@@ -140,9 +144,9 @@ def monitorar_pings():
             if os.path.exists(PING_LOG):
                 with open(PING_LOG, "r") as f:
                     ultima = datetime.datetime.fromisoformat(f.read().strip())
-                agora = datetime.datetime.now()
+                agora = agora_br()
                 delta = (agora - ultima).total_seconds()
-                if delta > 900:  # mais de 15 minutos
+                if delta > 900:
                     client.messages.create(
                         from_=TWILIO_NUMBER,
                         to=DESTINO,
@@ -152,7 +156,7 @@ def monitorar_pings():
                 print("⚠️ Arquivo de ping não encontrado.")
         except Exception as e:
             print(f"Erro no monitoramento de pings: {e}")
-        time.sleep(60)  # Verifica a cada 1 minuto
+        time.sleep(60)
 
 # ========== EXECUÇÃO ==========
 if __name__ == "__main__":
