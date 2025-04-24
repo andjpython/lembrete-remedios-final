@@ -1,17 +1,20 @@
 #!/bin/bash
 
-echo "🚀 Iniciando todos os serviços..."
+# Finaliza imediatamente se algum comando falhar
+set -e
 
-# Roda os scripts principais em background
-python app.py &       # ✅ Envia mensagens iniciais e verificação do dia
-echo "✅ app.py iniciado em background."
+echo "🚀 Iniciando todos os serviços do Bot de Lembrete de Remédios..."
 
-python main.py &      # ✅ Agendador de alertas e relatórios
-echo "✅ main.py iniciado em background."
+# ========= FLASK APP INICIAIS =========
+echo "✅ Iniciando app.py (mensagens iniciais)..."
+python app.py &
 
-python reenvio.py &   # ✅ Reenvio automático de lembretes
-echo "✅ reenvio.py iniciado em background."
+echo "✅ Iniciando main.py (agendador de alertas)..."
+python main.py &
 
-# Mantém o container vivo com o webhook (não usar & aqui)
-echo "🟢 Iniciando webhook.py em primeiro plano (Render monitora esse script)..."
+echo "✅ Iniciando reenvio.py (verificador de pendências)..."
+python reenvio.py &
+
+# ========= WEBHOOK =========
+echo "🟢 Iniciando webhook.py (ponto de entrada principal)..."
 python webhook.py
