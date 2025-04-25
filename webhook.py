@@ -81,6 +81,11 @@ def listar_remedios_do_dia(remedios):
                 lista.append(f"🔔 {r['nome']}{periodo} às {h['hora']}")
     return "\n".join(sorted(lista)) or "Nenhum remédio hoje! 😊"
 
+# ========== ROTA DE MONITORAMENTO ==========
+@app.route("/ping", methods=["GET", "HEAD"])
+def ping():
+    return "pong", 200
+
 # ========== WEBHOOK ==========
 @app.route("/webhook", methods=["POST", "HEAD"])
 def responder():
@@ -183,7 +188,7 @@ def responder():
     resposta.message(f"{gerar_saudacao_com_hora()}\n\n{erro_engracado()}\n\n{comandos}")
     return str(resposta)
 
-# ========== EXECUÇÃO FLASK ==========
+# ========== EXECUÇÃO ==========
 if __name__ == "__main__":
     print("🟢 Webhook do WhatsApp iniciado e ouvindo na porta padrão do Render...")
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
