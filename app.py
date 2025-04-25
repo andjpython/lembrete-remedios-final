@@ -1,21 +1,24 @@
 import json
 import os
-import datetime
 import time
+from datetime import datetime, timedelta
 from twilio.rest import Client
 from dotenv import load_dotenv
 from pathlib import Path
+from pytz import timezone
 
 # ========== INÍCIO ==========
 print("🟢 app.py rodando...")
 
+def agora_br():
+    return datetime.now(timezone("America/Sao_Paulo"))
+
 def log(msg):
-    agora = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    print(f"[{agora}] {msg}")
+    print(f"[{agora_br().strftime('%Y-%m-%d %H:%M:%S')}] {msg}")
 
 log("🚀 app.py está rodando normalmente no Render!")
 
-# ========== CARREGAR VARIÁVEIS DE AMBIENTE ==========
+# ========== AMBIENTE ==========
 env_path = Path(__file__).parent / ".env"
 load_dotenv(dotenv_path=env_path)
 
@@ -34,7 +37,7 @@ if not all([TWILIO_SID, TWILIO_TOKEN, TWILIO_NUMBER, DESTINO]):
 
 client = Client(TWILIO_SID, TWILIO_TOKEN)
 
-# ========== UTILITÁRIAS ==========
+# ========== FUNÇÕES UTILITÁRIAS ==========
 def enviar_mensagem(mensagem):
     try:
         client.messages.create(from_=TWILIO_NUMBER, to=DESTINO, body=mensagem)
@@ -56,32 +59,33 @@ def salvar_json(caminho, conteudo):
         json.dump(conteudo, f, indent=2, ensure_ascii=False)
 
 def saudacao_horario():
-    hora = datetime.datetime.now().hour
+    hora = agora_br().hour
     if hora < 12:
-        return "Bom dia"
+        return "☀️ Bom dia"
     elif hora < 18:
-        return "Boa tarde"
-    return "Boa noite"
+        return "🌤️ Boa tarde"
+    return "🌙 Boa noite"
 
 def esta_no_periodo_tratamento(remedio):
-    inicio = datetime.datetime.strptime(remedio["data_inicio"], "%Y-%m-%d")
+    inicio = datetime.strptime(remedio["data_inicio"], "%Y-%m-%d").date()
     dias = int(float(remedio["duracao_meses"]) * 30)
-    fim = inicio + datetime.timedelta(days=dias)
-    return inicio <= datetime.datetime.now() <= fim
+    fim = inicio + timedelta(days=dias)
+    hoje = agora_br().date()
+    return inicio <= hoje <= fim
 
 def e_dia_certo(remedio):
     if remedio["frequencia"] == "diario":
         return True
     if remedio["frequencia"] == "semanal":
-        inicio = datetime.datetime.strptime(remedio["data_inicio"], "%Y-%m-%d")
-        hoje = datetime.datetime.now().date()
-        return (hoje - inicio.date()).days % 7 == 0
+        inicio = datetime.strptime(remedio["data_inicio"], "%Y-%m-%d").date()
+        hoje = agora_br().date()
+        return (hoje - inicio).days % 7 == 0
     return False
 
 def registrar_pendencia(remedio, hora):
     historico = carregar_json("historico.json")
     pendencias = historico.get("pendencias", [])
-    data_hoje = datetime.datetime.now().strftime("%Y-%m-%d")
+    data_hoje = agora_br().strftime("%Y-%m-%d")
 
     for p in pendencias:
         if p["remedio"] == remedio["nome"] and p["data"] == data_hoje and p["horario"] == hora:
@@ -113,7 +117,7 @@ def notificar_remedio(remedio, hora, tipo_aviso):
     registrar_pendencia(remedio, hora)
 
 def verificar_horarios(remedios):
-    agora = datetime.datetime.now()
+    agora = agora_br()
     hora_atual = agora.strftime("%H:%M")
     notificou = False
 
@@ -121,10 +125,10 @@ def verificar_horarios(remedios):
         if not esta_no_periodo_tratamento(remedio) or not e_dia_certo(remedio):
             continue
         for h in remedio.get("horarios", []):
-            hora_remedio = datetime.datetime.strptime(h["hora"], "%H:%M").time()
-            hora_base = datetime.datetime.combine(agora.date(), hora_remedio)
+            hora_remedio = datetime.strptime(h["hora"], "%H:%M").time()
+            hora_base = datetime.combine(agora.date(), hora_remedio)
             for tipo, minutos in [("15min", 15), ("5min", 5), ("agora", 0)]:
-                if hora_atual == (hora_base - datetime.timedelta(minutes=minutos)).strftime("%H:%M"):
+                if hora_atual == (hora_base - timedelta(minutes=minutos)).strftime("%H:%M"):
                     notificar_remedio(remedio, h["hora"], tipo)
                     notificou = True
 
@@ -149,7 +153,7 @@ def verificar_pendentes_do_dia(remedios, historico, data):
 # ========== EXECUÇÃO ==========
 def iniciar():
     log("🚀 app.py iniciou normalmente!")
-    agora = datetime.datetime.now()
+    agora = agora_br()
     enviar_mensagem(f"{saudacao_horario()}! Agora são {agora.strftime('%H:%M')}. Vamos iniciar o dia!")
 
     remedios = carregar_json("remedios.json")

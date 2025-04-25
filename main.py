@@ -7,10 +7,11 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from twilio.rest import Client
 from dotenv import load_dotenv
+from pytz import timezone
 
 # ========== CONFIGURAÇÃO ==========
-os.environ["TZ"] = "America/Sao_Paulo"
-time.tzset()
+def agora_br():
+    return datetime.now(timezone("America/Sao_Paulo"))
 
 env_path = Path(__file__).parent / ".env"
 load_dotenv(dotenv_path=env_path)
@@ -30,8 +31,7 @@ scheduler = BackgroundScheduler()
 
 # ========== UTILITÁRIOS ==========
 def log(msg):
-    agora = datetime.now().strftime("[%Y-%m-%d %H:%M:%S]")
-    print(f"{agora} {msg}")
+    print(f"[{agora_br().strftime('%Y-%m-%d %H:%M:%S')}] {msg}")
 
 def carregar_json(caminho, tipo_lista=False):
     if not os.path.exists(caminho):
@@ -51,7 +51,7 @@ def carregar_nome_paciente():
     return dados.get("nome", "Paciente")
 
 def emoji_por_horario():
-    hora = datetime.now().hour
+    hora = agora_br().hour
     if hora < 12:
         return "☀️"
     elif hora < 18:
@@ -73,7 +73,7 @@ def enviar_mensagem(mensagem):
 # ========== AGENDAMENTOS ==========
 def agendar_alertas():
     remedios = carregar_json(REMEDIOS_ARQUIVO, tipo_lista=True)
-    agora = datetime.now()
+    agora = agora_br()
     hoje = agora.date()
 
     for r in remedios:
@@ -108,7 +108,7 @@ def agendar_alertas():
 def agendar_relatorio_diario():
     def gerar_relatorio():
         historico = carregar_json(HISTORICO_ARQUIVO)
-        hoje = datetime.now().strftime("%Y-%m-%d")
+        hoje = agora_br().strftime("%Y-%m-%d")
         nome = carregar_nome_paciente()
         confirmados = [c for c in historico.get("confirmacoes", []) if c["data"] == hoje]
 
@@ -125,7 +125,7 @@ def agendar_relatorio_diario():
 def agendar_resumo_semanal():
     def gerar_resumo():
         historico = carregar_json(HISTORICO_ARQUIVO)
-        hoje = datetime.now().date()
+        hoje = agora_br().date()
         inicio = hoje - timedelta(days=7)
         nome = carregar_nome_paciente()
 
@@ -151,8 +151,8 @@ def agendar_resumo_semanal():
 def agendar_reenvio_pendentes():
     def reenviar():
         historico = carregar_json(HISTORICO_ARQUIVO)
-        hoje = datetime.now().strftime("%Y-%m-%d")
-        agora = datetime.now()
+        hoje = agora_br().strftime("%Y-%m-%d")
+        agora = agora_br()
         nome = carregar_nome_paciente()
         pendentes = historico.get("pendencias", [])
         reenviadas = 0
@@ -162,7 +162,7 @@ def agendar_reenvio_pendentes():
                 continue
             try:
                 hora_remedio = datetime.strptime(p["horario"], "%H:%M")
-                tempo = (agora - datetime.combine(datetime.today(), hora_remedio.time())).total_seconds()
+                tempo = (agora - datetime.combine(agora.date(), hora_remedio.time())).total_seconds()
                 if tempo > 300:
                     p["tentativas"] = p.get("tentativas", 0) + 1
                     registrar_ultimo_comando(p["remedio"], p["horario"])

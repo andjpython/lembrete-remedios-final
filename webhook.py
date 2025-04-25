@@ -1,27 +1,27 @@
 import os
 import time
-
-# Força o timezone correto mesmo no Render
-os.environ["TZ"] = "America/Sao_Paulo"
-time.tzset()
-
-from flask import Flask, request
-from twilio.twiml.messaging_response import MessagingResponse
 import json
 import datetime
 import re
 import difflib
 import pytz
 import random
+from flask import Flask, request
+from twilio.twiml.messaging_response import MessagingResponse
 
+# ========== TIMEZONE ==========
+os.environ["TZ"] = "America/Sao_Paulo"
+time.tzset()
+
+# ========== FLASK APP ==========
 app = Flask(__name__)
 
-# === CONFIG ===
+# ========== ARQUIVOS ==========
 HISTORICO_ARQUIVO = "historico.json"
 REMEDIOS_ARQUIVO = "remedios.json"
 CONTEXTO_ARQUIVO = "contexto.json"
 
-# === UTILS ===
+# ========== FUNÇÕES UTILITÁRIAS ==========
 def agora_br():
     return datetime.datetime.now(pytz.timezone("America/Sao_Paulo"))
 
@@ -81,7 +81,7 @@ def listar_remedios_do_dia(remedios):
                 lista.append(f"🔔 {r['nome']}{periodo} às {h['hora']}")
     return "\n".join(sorted(lista)) or "Nenhum remédio hoje! 😊"
 
-# === ROTAS ===
+# ========== WEBHOOK ==========
 @app.route("/webhook", methods=["POST", "HEAD"])
 def responder():
     if request.method == "HEAD":
@@ -102,13 +102,14 @@ def responder():
         match = difflib.get_close_matches(nome_digitado.lower(), nomes_validos, n=1, cutoff=0.6)
         return match[0].title() if match else nome_digitado.title()
 
+    # === LISTAR REMÉDIOS ===
     if any(c in texto for c in [
         "remédio tenho que tomar", "quais remedios", "remédios de hoje",
-        "quais faltam", "falta algum", "o que falta", "qual não tomei"
-    ]):
+        "quais faltam", "falta algum", "o que falta", "qual não tomei"]):
         resposta.message(f"📋 Hoje você ainda precisa tomar:\n{listar_remedios_do_dia(remedios)}")
         return str(resposta)
 
+    # === CONFIRMADOS ===
     if "o que já tomei" in texto or "já tomei" in texto:
         confirmados = [c for c in historico.get("confirmacoes", []) if c["data"] == hoje and c.get("confirmado")]
         if confirmados:
@@ -118,6 +119,7 @@ def responder():
             resposta.message("📭 Nenhum remédio confirmado hoje ainda.")
         return str(resposta)
 
+    # === TOMOU ===
     match = re.search(r"tomei o ([\w\s\-]+)", texto)
     if match:
         nome = corrigir_nome(match.group(1).strip())
@@ -129,6 +131,7 @@ def responder():
         resposta.message(f"💊 Marquei que você tomou *{nome}* às {hora_atual}.")
         return str(resposta)
 
+    # === NÃO TOMOU ===
     match = re.search(r"não tomei o ([\w\s\-]+)", texto)
     if match:
         nome = corrigir_nome(match.group(1).strip())
@@ -141,6 +144,7 @@ def responder():
         resposta.message(f"🕐 Marquei que *{nome}* ainda está pendente.")
         return str(resposta)
 
+    # === CORRIGIR HORÁRIO ===
     match = re.search(r"corrige.*tomei o ([\w\s\-]+) (?:às|as) (\d{2}:\d{2})", texto)
     if match:
         nome = corrigir_nome(match.group(1).strip())
@@ -153,6 +157,7 @@ def responder():
         resposta.message(f"🔁 Corrigido! Você tomou *{nome}* às {hora_corrigida}.")
         return str(resposta)
 
+    # === ERROU ===
     match = re.search(r"errei.*não tomei o ([\w\s\-]+)", texto)
     if match:
         nome = corrigir_nome(match.group(1).strip())
@@ -165,6 +170,7 @@ def responder():
         resposta.message(f"⚠️ Ok! Apaguei a confirmação do *{nome}*.")
         return str(resposta)
 
+    # === COMANDO DESCONHECIDO ===
     comandos = (
         "🔍 Exemplos de comandos:\n"
         "• tomei o Lipidil\n"
@@ -177,7 +183,7 @@ def responder():
     resposta.message(f"{gerar_saudacao_com_hora()}\n\n{erro_engracado()}\n\n{comandos}")
     return str(resposta)
 
-# === FLASK SERVIDOR ===
+# ========== EXECUÇÃO FLASK ==========
 if __name__ == "__main__":
     print("🟢 Webhook do WhatsApp iniciado e ouvindo na porta padrão do Render...")
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
